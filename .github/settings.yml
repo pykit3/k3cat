@@ -1,0 +1,6 @@
+_extends: gh-config
+
+repository:
+  description: Just like nix command cat or tail, it continuously scan a file line by line.
+  homepage: https://blog.openacid.com
+  topics: python
