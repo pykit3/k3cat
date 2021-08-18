@@ -1,0 +1,9 @@
+-r _building/requirements.txt
+
+k3ut>=0.1.15,<0.2
+k3fs>=0.1.0,<=0.2.0
+k3utfjson>=0.1.1,<0.2
+k3thread>=0.1.0,<0.2
+k3proc>=0.2.13,<0.3.0
+k3confloader>=0.1.1,<0.2
+k3portlock>=0.1.1,<0.2
