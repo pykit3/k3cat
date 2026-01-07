@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "k3cat"
+version = "0.1.0"
+description = "Like nix command cat or tail, continuously scan a file line by line"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    { name = "Zhang Yanpo", email = "drdr.xp@gmail.com" }
+]
+keywords = ["cat", "tail", "file", "scan", "pykit3"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "k3confloader",
+    "k3portlock",
+    "k3utfjson",
+    "k3fs",
+]
+
+[project.urls]
+Homepage = "https://github.com/pykit3/k3cat"
+Documentation = "https://k3cat.readthedocs.io"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff",
+    "coverage",
+]
+publish = [
+    "build",
+    "twine",
+    "pk3",
+]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+    "mkdocstrings[python]>=0.24",
+]
+
+[tool.setuptools]
+packages = ["k3cat"]
+
+[tool.setuptools.package-dir]
+k3cat = "."
+
+[tool.ruff]
+line-length = 120

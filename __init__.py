@@ -13,28 +13,18 @@ offset, or it scan from the first byte.
 # from .proc import CalledProcessError
 # from .proc import ProcError
 
-__version__ = "0.1.0"
-__name__ = "k3cat"
+from importlib.metadata import version
 
-from .cat import (
-    SEEK_END,
-    SEEK_START,
+__version__ = version("k3cat")
 
-    CatError,
-    LockTimeout,
-    NoData,
-    NoSuchFile,
-    Cat
-)
+from .cat import SEEK_END, SEEK_START, CatError, LockTimeout, NoData, NoSuchFile, Cat
+
 __all__ = [
-
     "SEEK_END",
     "SEEK_START",
-
     "CatError",
     "LockTimeout",
     "NoData",
     "NoSuchFile",
     "Cat",
-
 ]

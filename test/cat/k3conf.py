@@ -1,1 +1,1 @@
-cat_stat_dir = '.'
+cat_stat_dir = "."

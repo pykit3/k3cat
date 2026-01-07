@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 no_data_timeout = 3600
 read_size = 1024 * 1024 * 16
 file_check_time_range = (0.5, 5.0)
-stat_dir = conf.cat_stat_dir or '/tmp'
+stat_dir = conf.cat_stat_dir or "/tmp"
 # cat_stat_dir
 # specifies base dir to store offset recording file.
 #
@@ -36,8 +36,8 @@ stat_dir = conf.cat_stat_dir or '/tmp'
 # fn = '/var/log/nginx/access.log'
 # for l in fsutil.Cat(fn).iterate(timeout=3600):
 #   print l
-SEEK_START = 'start'
-SEEK_END = 'end'
+SEEK_START = "start"
+SEEK_END = "end"
 
 
 class CatError(Exception):
@@ -57,7 +57,6 @@ class LockTimeout(CatError):
 
 
 class FakeLock(object):
-
     def __enter__(self):
         return self
 
@@ -66,14 +65,9 @@ class FakeLock(object):
 
 
 class Cat(object):
-
-    def __init__(self, fn,
-                 handler=None,
-                 file_end_handler=None,
-                 exclusive=True,
-                 id=None,
-                 strip=False,
-                 read_chunk_size=read_size):
+    def __init__(
+        self, fn, handler=None, file_end_handler=None, exclusive=True, id=None, strip=False, read_chunk_size=read_size
+    ):
         """
 
         :param fn: specifies the file to scan.
@@ -111,14 +105,13 @@ class Cat(object):
         self.exclusive = exclusive
 
         if id is None:
-
-            if hasattr(__main__, '__file__'):
+            if hasattr(__main__, "__file__"):
                 id = __main__.__file__
                 id = os.path.basename(id)
-                if id == '<stdin>':
-                    id = '__stdin__'
+                if id == "<stdin>":
+                    id = "__stdin__"
             else:
-                id = '__instant_command__'
+                id = "__instant_command__"
 
         self.id = id
         self.strip = strip
@@ -131,9 +124,7 @@ class Cat(object):
         self.running = None
         self.bufferred = None  # (offset, content)
 
-        if (self.handler is not None
-                and callable(self.handler)):
-
+        if self.handler is not None and callable(self.handler):
             self.handler = [self.handler]
 
     def cat(self, timeout=None, default_seek=None):
@@ -143,62 +134,60 @@ class Cat(object):
         :return: Nothing.
         """
         for line in self.iterate(timeout=timeout, default_seek=default_seek):
-
             for h in self.handler:
                 try:
                     h(line)
                 except Exception as e:
-                    logger.exception(repr(e)
-                                     + ' while handling {line}'.format(line=repr(line)))
+                    logger.exception(repr(e) + " while handling {line}".format(line=repr(line)))
 
     def iterate(self, timeout=None, default_seek=None):
         """
-        Make a generator to yield every line.
-        :param timeout: specifies the time in second to wait for new data.
-        If timeout is `0` or smaller than `0`, it means to scan a file no more than one time:
-    -   If it sees any data, it returning them until it reaches file end.
-    -   If there is not any data, it raises `NoData` error.
+            Make a generator to yield every line.
+            :param timeout: specifies the time in second to wait for new data.
+            If timeout is `0` or smaller than `0`, it means to scan a file no more than one time:
+        -   If it sees any data, it returning them until it reaches file end.
+        -   If there is not any data, it raises `NoData` error.
 
-        By default it is 3600.
-        :param default_seek:
-        specify a default offset when the last scanned offset is not avaliable
-        or not valid.
+            By default it is 3600.
+            :param default_seek:
+            specify a default offset when the last scanned offset is not avaliable
+            or not valid.
 
-        Not avaliable mean the stat file used to store the scanning offset is
-        not exist or has broken. For example, when it is the first time to
-        scan a file, the stat file will not exist.
+            Not avaliable mean the stat file used to store the scanning offset is
+            not exist or has broken. For example, when it is the first time to
+            scan a file, the stat file will not exist.
 
-        Not valid mean the info stored in stat file is not for the file we are
-        about to scan, this will happen when the same file is deleted and then
-        created, the info stored in stat file is for the deleted file not for
-        the created new file.
+            Not valid mean the info stored in stat file is not for the file we are
+            about to scan, this will happen when the same file is deleted and then
+            created, the info stored in stat file is for the deleted file not for
+            the created new file.
 
-        We will also treat the last offset stored in stat file as not valid
-        if it is too small than the file size when you set `default_seek`
-        to a negative number. And the absolute value of `default_seek` is
-        the maximum allowed difference.
+            We will also treat the last offset stored in stat file as not valid
+            if it is too small than the file size when you set `default_seek`
+            to a negative number. And the absolute value of `default_seek` is
+            the maximum allowed difference.
 
-        It can take following values:
+            It can take following values:
 
-        -   fsutil.SEEK_START:
-            scan from the beginning of the file.
+            -   fsutil.SEEK_START:
+                scan from the beginning of the file.
 
-        -   fsutil.SEEK_END:
-            scan from the end of the file, mean only new data will be scanned.
+            -   fsutil.SEEK_END:
+                scan from the end of the file, mean only new data will be scanned.
 
-        -   `x`(a positive number, includes `0`).
-            scan from offset `x`.
+            -   `x`(a positive number, includes `0`).
+                scan from offset `x`.
 
-        -   `-x`(a negative number).
-            it is used to specify the maximum allowed difference between last
-            offset and file size. If the difference is bigger than `x`, then
-            scan from `x` bytes before the end of the file, not scan from the
-            last offset.
-            This is usefull when you want to scan from near the end of the file.
-            Use `fsutil.SEEK_END` can not solve the problem, because it only
-            take effect when the last offset is not avaliable.
-        By default it is `k3cat.SEEK_START`.
-        :return: a generator.
+            -   `-x`(a negative number).
+                it is used to specify the maximum allowed difference between last
+                offset and file size. If the difference is bigger than `x`, then
+                scan from `x` bytes before the end of the file, not scan from the
+                last offset.
+                This is usefull when you want to scan from near the end of the file.
+                Use `fsutil.SEEK_END` can not solve the problem, because it only
+                take effect when the last offset is not avaliable.
+            By default it is `k3cat.SEEK_START`.
+            :return: a generator.
         """
         self.running = True
         try:
@@ -208,7 +197,6 @@ class Cat(object):
             self.running = False
 
     def _iter(self, timeout, default_seek):
-
         if timeout == 0:
             # timeout at once after one read, if there is no more data in file.
             # set to -1 to prevent possible slight time shift.
@@ -224,17 +212,15 @@ class Cat(object):
                 for x in self._nolock_iter(timeout, default_seek):
                     yield x
         except k3portlock.PortlockTimeout:
-            raise LockTimeout(self.id, self.fn, 'other Cat() has been holding this lock')
+            raise LockTimeout(self.id, self.fn, "other Cat() has been holding this lock")
 
     def _nolock_iter(self, timeout, default_seek):
-
         if timeout is None:
             timeout = no_data_timeout
 
         expire_at = time.time() + timeout
 
         while True:
-
             # NOTE: Opening a file and waiting for new data in it does not work.
             #
             # It has to check for file overriding on fs periodically.
@@ -256,8 +242,7 @@ class Cat(object):
 
             with f:
                 try:
-                    for x in self.iter_to_file_end(
-                            f, read_timeout, default_seek):
+                    for x in self.iter_to_file_end(f, read_timeout, default_seek):
                         yield x
 
                     # re-new expire_at if there is any data read.
@@ -270,23 +255,21 @@ class Cat(object):
                         # Thus the bufferred must be a whole line, even there is
                         # not a trailing '\n' presents
                         if self.bufferred is not None:
-                            l = self.bufferred[1]
+                            line = self.bufferred[1]
                             self.bufferred = None
-                            yield l
+                            yield line
                         return
 
                 except NoData as e:
-
                     # NoData raises only when there is no data yield.
 
-                    logger.info(repr(e) + ' while cat: {fn}'.format(fn=self.fn))
+                    logger.info(repr(e) + " while cat: {fn}".format(fn=self.fn))
 
                     if time.time() > expire_at:
                         # raise last NoData
                         raise
 
     def wait_open_file(self, timeout):
-
         expire_at = time.time() + timeout
         sleep_time = 0.01
         max_sleep_time = 1
@@ -295,43 +278,37 @@ class Cat(object):
         if f is not None:
             return f
 
-        logger.info('file not found: {fn}'.format(fn=self.fn))
+        logger.info("file not found: {fn}".format(fn=self.fn))
 
         while time.time() < expire_at:
-
             f = self._try_open_file()
             if f is not None:
                 return f
 
             sl = min([sleep_time, expire_at - time.time()])
-            logger.debug('file not found: {fn}, sleep for {sl}'.format(fn=self.fn, sl=sl))
+            logger.debug("file not found: {fn}, sleep for {sl}".format(fn=self.fn, sl=sl))
             time.sleep(sl)
 
             sleep_time = min([sleep_time * 1.5, max_sleep_time])
 
-        logger.warning('file not found'
-                    ' while waiting for it to be present: {fn}'.format(fn=self.fn))
+        logger.warning("file not found while waiting for it to be present: {fn}".format(fn=self.fn))
 
         raise NoSuchFile(self.fn)
 
     def iter_to_file_end(self, f, read_timeout, default_seek):
-
         offset = self.get_last_offset(f, default_seek)
         f.seek(offset)
 
-        logger.info('scan {fn} from offset: {offset}'.format(
-            fn=self.fn,
-            offset=offset))
+        logger.info("scan {fn} from offset: {offset}".format(fn=self.fn, offset=offset))
 
         for line in self.iter_lines(f, read_timeout):
-            logger.debug('yield:' + repr(line))
+            logger.debug("yield:" + repr(line))
             yield line
 
         if self.file_end_handler is not None:
             self.file_end_handler()
 
     def wait_for_new_data(self, f, timeout):
-
         # Before full_chunk_expire_at, wait for a full chunk data to be ready to
         # maximize throughput.
         # If time exceeds full_chunk_expire_at, return True if there is any data ready.
@@ -343,12 +320,10 @@ class Cat(object):
         expire_at = time.time() + timeout
 
         while True:
-
             if f.tell() + self.read_chunk_size < _file_size(f):
                 return
 
-            if (f.tell() < _file_size(f)
-                    and time.time() > full_chunk_expire_at):
+            if f.tell() < _file_size(f) and time.time() > full_chunk_expire_at:
                 return
 
             if time.time() >= expire_at:
@@ -365,20 +340,19 @@ class Cat(object):
 
     def lock_name(self):
         name = os.path.realpath(self.fn)
-        name = 'fsutil_cat_lock_!' + self.id + '!'.join(name.split('/'))
+        name = "fsutil_cat_lock_!" + self.id + "!".join(name.split("/"))
         return name
 
     def read_last_stat(self):
-
         cont = k3fs.fread(self.stat_path())
-        if cont.startswith('{'):
+        if cont.startswith("{"):
             return k3utfjson.load(cont)
 
         # old format: TODO remove it
 
-        last = cont.strip().split(' ')
+        last = cont.strip().split(" ")
         if len(last) != 3:
-            raise IOError('InvalidRecordFormat', last)
+            raise IOError("InvalidRecordFormat", last)
 
         (lastino, lastsize, lastoff) = last
 
@@ -391,7 +365,6 @@ class Cat(object):
         }
 
     def write_last_stat(self, f, offset):
-
         st = os.fstat(f.fileno())
 
         ino = st[stat.ST_INO]
@@ -403,8 +376,7 @@ class Cat(object):
 
         k3fs.fwrite(self.stat_path(), k3utfjson.dump(last), fsync=False)
 
-        logger.info('position written fn=%s inode=%d offset=%d' % (
-            self.fn, ino, offset))
+        logger.info("position written fn=%s inode=%d offset=%d" % (self.fn, ino, offset))
 
     def get_last_offset(self, f, default_seek):
         st = os.fstat(f.fileno())
@@ -438,21 +410,19 @@ class Cat(object):
             return default_offset
 
         if max_residual is not None:
-            if size - last['offset'] > max_residual:
-                last['offset'] = size - max_residual
+            if size - last["offset"] > max_residual:
+                last["offset"] = size - max_residual
 
-        if last['inode'] != ino or last['offset'] > size:
+        if last["inode"] != ino or last["offset"] > size:
             return default_offset
 
-        return last['offset']
+        return last["offset"]
 
     def iter_lines(self, f, read_timeout):
-
         # raise NoData for the first time
         self.wait_for_new_data(f, read_timeout)
 
         while True:
-
             offset = f.tell()
             fsize = _file_size(f)
             if offset >= fsize:
@@ -474,14 +444,14 @@ class Cat(object):
                         _line = self.bufferred[1] + _line
                         self.bufferred = None
 
-                    if not _line.endswith(('\r', '\n')):
+                    if not _line.endswith(("\r", "\n")):
                         self.bufferred = (offset, _line)
                         offset += len(_line)
                         continue
 
                     line = _line
                     if self.strip:
-                        line = line.strip('\r\n')
+                        line = line.strip("\r\n")
                     offset += len(_line)
                     yield line
 
@@ -499,7 +469,7 @@ class Cat(object):
     def _try_open_file(self):
         try:
             f = open(self.fn)
-            logger.info('file found and opened {fn}'.format(fn=self.fn))
+            logger.info("file found and opened {fn}".format(fn=self.fn))
             return f
         except IOError as e:
             if e.errno == errno.ENOENT:
