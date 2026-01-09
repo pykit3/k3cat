@@ -1,7 +1,8 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # coding: utf-8
 
 import os
+import sys
 import time
 import unittest
 
@@ -16,7 +17,7 @@ dd = k3ut.dd
 # xx/pykit/fsutil/test/
 this_base = os.path.dirname(__file__)
 
-pyt = "python"
+pyt = sys.executable
 
 
 class TestCat(unittest.TestCase):
@@ -459,7 +460,6 @@ class TestCat(unittest.TestCase):
 
         rc, out, err = k3proc.shell_script(
             pyt + " " + this_base + "/cat/cat_load_config.py " + self.fn,
-            env=dict(PYTHONPATH=this_base + ":" + (os.environ.get("PYTHONPATH") or "")),
         )
 
         dd(rc)
