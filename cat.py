@@ -187,7 +187,7 @@ class Cat(object):
                 Use `fsutil.SEEK_END` can not solve the problem, because it only
                 take effect when the last offset is not avaliable.
             By default it is `k3cat.SEEK_START`.
-            :return: a generator.
+            :return: a generator yielding each line as a `str` decoded from UTF-8.
         """
         self.running = True
         try:
@@ -255,7 +255,7 @@ class Cat(object):
                         # Thus the bufferred must be a whole line, even there is
                         # not a trailing '\n' presents
                         if self.bufferred is not None:
-                            line = self.bufferred[1]
+                            line = self.bufferred[1].decode("utf-8")
                             self.bufferred = None
                             yield line
                         return
@@ -436,7 +436,7 @@ class Cat(object):
                     # Thus we have to use f.readline(), manually deal with every
                     # line.
                     _line = f.readline(self.read_chunk_size)
-                    if _line == "":
+                    if _line == b"":
                         break
 
                     if self.bufferred is not None:
@@ -444,12 +444,12 @@ class Cat(object):
                         _line = self.bufferred[1] + _line
                         self.bufferred = None
 
-                    if not _line.endswith(("\r", "\n")):
+                    if not _line.endswith((b"\r", b"\n")):
                         self.bufferred = (offset, _line)
                         offset += len(_line)
                         continue
 
-                    line = _line
+                    line = _line.decode("utf-8")
                     if self.strip:
                         line = line.strip("\r\n")
                     offset += len(_line)
@@ -468,7 +468,7 @@ class Cat(object):
 
     def _try_open_file(self):
         try:
-            f = open(self.fn)
+            f = open(self.fn, "rb")
             logger.info("file found and opened {fn}".format(fn=self.fn))
             return f
         except IOError as e:

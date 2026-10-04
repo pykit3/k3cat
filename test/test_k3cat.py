@@ -153,6 +153,20 @@ class TestCat(unittest.TestCase):
 
             self.assertEqual(expected * i, rst)
 
+    def test_continue_read_multibyte(self):
+        # The recorded offset must count bytes, or the second scan starts in
+        # the middle of "中".
+        cat = k3cat.Cat(self.fn, strip=True)
+
+        append_lines(self.fn, ["中"])
+        first = list(cat.iterate(timeout=0))
+
+        append_lines(self.fn, ["后"])
+        second = list(cat.iterate(timeout=0))
+
+        self.assertEqual(["中"], first)
+        self.assertEqual(["后"], second)
+
     def test_file_change(self):
         expected = [
             "a" * 32,
