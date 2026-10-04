@@ -30,7 +30,6 @@ pip install k3cat
 # Synopsis
 
 ```python
-
 import sys
 
 import k3cat
@@ -38,7 +37,6 @@ import k3cat
 fn = sys.argv[1]
 for x in k3cat.Cat(fn, strip=True).iterate(timeout=0):
     print(x)
-
 ```
 
 #   Author

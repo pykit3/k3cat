@@ -1,19 +1,15 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-
 import errno
 import logging
 import os
 import stat
 import time
 
-import __main__
-from k3confloader import conf
+import k3fs
 import k3portlock
 import k3utfjson
-import k3fs
+from k3confloader import conf
 
+import __main__
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +52,7 @@ class LockTimeout(CatError):
     pass
 
 
-class FakeLock(object):
+class FakeLock:
     def __enter__(self):
         return self
 
@@ -64,7 +60,7 @@ class FakeLock(object):
         return
 
 
-class Cat(object):
+class Cat:
     def __init__(
         self, fn, handler=None, file_end_handler=None, exclusive=True, id=None, strip=False, read_chunk_size=read_size
     ):
@@ -137,8 +133,8 @@ class Cat(object):
             for h in self.handler:
                 try:
                     h(line)
-                except Exception as e:
-                    logger.exception(repr(e) + " while handling {line}".format(line=repr(line)))
+                except Exception:
+                    logger.exception(f"while handling {line!r}")
 
     def iterate(self, timeout=None, default_seek=None):
         """
@@ -191,8 +187,7 @@ class Cat(object):
         """
         self.running = True
         try:
-            for x in self._iter(timeout, default_seek):
-                yield x
+            yield from self._iter(timeout, default_seek)
         finally:
             self.running = False
 
@@ -209,8 +204,7 @@ class Cat(object):
 
         try:
             with lck:
-                for x in self._nolock_iter(timeout, default_seek):
-                    yield x
+                yield from self._nolock_iter(timeout, default_seek)
         except k3portlock.PortlockTimeout:
             raise LockTimeout(self.id, self.fn, "other Cat() has been holding this lock")
 
@@ -232,18 +226,15 @@ class Cat(object):
 
             read_timeout = (expire_at - time.time()) / 5.0
 
-            if read_timeout < file_check_time_range[0]:
-                read_timeout = file_check_time_range[0]
+            read_timeout = max(read_timeout, file_check_time_range[0])
 
-            if read_timeout > file_check_time_range[1]:
-                read_timeout = file_check_time_range[1]
+            read_timeout = min(read_timeout, file_check_time_range[1])
 
             f = self.wait_open_file(timeout=expire_at - time.time())
 
             with f:
                 try:
-                    for x in self.iter_to_file_end(f, read_timeout, default_seek):
-                        yield x
+                    yield from self.iter_to_file_end(f, read_timeout, default_seek)
 
                     # re-new expire_at if there is any data read.
                     expire_at = time.time() + timeout
@@ -263,7 +254,7 @@ class Cat(object):
                 except NoData as e:
                     # NoData raises only when there is no data yield.
 
-                    logger.info(repr(e) + " while cat: {fn}".format(fn=self.fn))
+                    logger.info(repr(e) + f" while cat: {self.fn}")
 
                     if time.time() > expire_at:
                         # raise last NoData
@@ -278,7 +269,7 @@ class Cat(object):
         if f is not None:
             return f
 
-        logger.info("file not found: {fn}".format(fn=self.fn))
+        logger.info(f"file not found: {self.fn}")
 
         while time.time() < expire_at:
             f = self._try_open_file()
@@ -286,12 +277,12 @@ class Cat(object):
                 return f
 
             sl = min([sleep_time, expire_at - time.time()])
-            logger.debug("file not found: {fn}, sleep for {sl}".format(fn=self.fn, sl=sl))
+            logger.debug(f"file not found: {self.fn}, sleep for {sl}")
             time.sleep(sl)
 
             sleep_time = min([sleep_time * 1.5, max_sleep_time])
 
-        logger.warning("file not found while waiting for it to be present: {fn}".format(fn=self.fn))
+        logger.warning(f"file not found while waiting for it to be present: {self.fn}")
 
         raise NoSuchFile(self.fn)
 
@@ -299,7 +290,7 @@ class Cat(object):
         offset = self.get_last_offset(f, default_seek)
         f.seek(offset)
 
-        logger.info("scan {fn} from offset: {offset}".format(fn=self.fn, offset=offset))
+        logger.info(f"scan {self.fn} from offset: {offset}")
 
         for line in self.iter_lines(f, read_timeout):
             logger.debug("yield:" + repr(line))
@@ -352,9 +343,9 @@ class Cat(object):
 
         last = cont.strip().split(" ")
         if len(last) != 3:
-            raise IOError("InvalidRecordFormat", last)
+            raise OSError("InvalidRecordFormat", last)
 
-        (lastino, lastsize, lastoff) = last
+        (lastino, _lastsize, lastoff) = last
 
         lastino = int(lastino)
         lastoff = int(lastoff)
@@ -376,7 +367,7 @@ class Cat(object):
 
         k3fs.fwrite(self.stat_path(), k3utfjson.dump(last), fsync=False)
 
-        logger.info("position written fn=%s inode=%d offset=%d" % (self.fn, ino, offset))
+        logger.info(f"position written fn={self.fn} inode={ino} offset={offset}")
 
     def get_last_offset(self, f, default_seek):
         st = os.fstat(f.fileno())
@@ -405,13 +396,12 @@ class Cat(object):
 
         try:
             last = self.read_last_stat()
-        except (IOError, ValueError):
+        except (OSError, ValueError):
             # damaged stat file
             return default_offset
 
-        if max_residual is not None:
-            if size - last["offset"] > max_residual:
-                last["offset"] = size - max_residual
+        if max_residual is not None and size - last["offset"] > max_residual:
+            last["offset"] = size - max_residual
 
         if last["inode"] != ino or last["offset"] > size:
             return default_offset
@@ -468,10 +458,11 @@ class Cat(object):
 
     def _try_open_file(self):
         try:
-            f = open(self.fn, "rb")
-            logger.info("file found and opened {fn}".format(fn=self.fn))
+            # The caller owns the returned file and closes it.
+            f = open(self.fn, "rb")  # noqa: SIM115
+            logger.info(f"file found and opened {self.fn}")
             return f
-        except IOError as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 pass
 

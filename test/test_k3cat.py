@@ -1,16 +1,14 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import os
 import sys
 import time
 import unittest
 
-import k3cat
 import k3fs
 import k3proc
 import k3thread
 import k3ut
+
+import k3cat
 
 dd = k3ut.dd
 
@@ -41,9 +39,8 @@ class TestCat(unittest.TestCase):
 
         append_lines(self.fn, expected)
 
-        rst = []
-        for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0):
-            rst.append(line)
+        cat = k3cat.Cat(self.fn, strip=True)
+        rst = list(cat.iterate(timeout=0))
 
         self.assertEqual(expected, rst)
 
@@ -57,9 +54,8 @@ class TestCat(unittest.TestCase):
 
         dd(os.system("ls -l /tmp/pykit*"))
 
-        rst = []
-        for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0):
-            rst.append(line)
+        cat = k3cat.Cat(self.fn, strip=True)
+        rst = list(cat.iterate(timeout=0))
 
         self.assertEqual(expected, rst)
 
@@ -93,21 +89,17 @@ class TestCat(unittest.TestCase):
         append_lines(self.fn, expected)
         cat_handle = k3cat.Cat(self.fn, strip=True)
 
-        rst = []
-        for val in cat_handle.iterate(timeout=0):
-            rst.append(val)
+        rst = list(cat_handle.iterate(timeout=0))
         self.assertEqual(expected, rst)
 
         # stat file was removed
         k3fs.remove(cat_handle.stat_path())
-        for val in cat_handle.iterate(timeout=0):
-            rst.append(val)
+        rst.extend(cat_handle.iterate(timeout=0))
         self.assertEqual(expected * 2, rst)
 
         # stat file was damaged
         k3fs.fwrite(cat_handle.stat_path(), "{]")
-        for val in cat_handle.iterate(timeout=0):
-            rst.append(val)
+        rst.extend(cat_handle.iterate(timeout=0))
         self.assertEqual(expected * 3, rst)
 
     def test_data_chucked(self):
@@ -119,22 +111,19 @@ class TestCat(unittest.TestCase):
         rst = []
 
         append_lines(self.fn, expected)
-        for line in cat_handle.iterate(timeout=0):
-            rst.append(line)
+        rst.extend(cat_handle.iterate(timeout=0))
         self.assertEqual(expected, rst)
 
         # file was refreshed
         os.rename(self.fn, self.fn + "_old")
         append_lines(self.fn, new_data)
         k3fs.remove(self.fn + "_old")
-        for line in cat_handle.iterate(timeout=0):
-            rst.append(line)
+        rst.extend(cat_handle.iterate(timeout=0))
         self.assertEqual(expected + new_data, rst)
 
         # file was chucked
         k3fs.fwrite(self.fn, chucked[0])
-        for line in cat_handle.iterate(timeout=0):
-            rst.append(line)
+        rst.extend(cat_handle.iterate(timeout=0))
         dd(rst)
         self.assertEqual(expected + new_data + chucked, rst)
 
@@ -148,8 +137,8 @@ class TestCat(unittest.TestCase):
         for i in range(1, 11):
             append_lines(self.fn, expected)
 
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=0))
 
             self.assertEqual(expected * i, rst)
 
@@ -186,8 +175,8 @@ class TestCat(unittest.TestCase):
         th = k3thread.daemon(_override)
 
         try:
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=2):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=2))
         except k3cat.NoData:
             pass
 
@@ -222,8 +211,8 @@ class TestCat(unittest.TestCase):
         th = k3thread.daemon(_override)
 
         try:
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=2):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=2))
         except k3cat.NoData:
             pass
 
@@ -246,8 +235,8 @@ class TestCat(unittest.TestCase):
         th = k3thread.daemon(_append)
 
         try:
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0.4):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=0.4))
         except k3cat.NoData:
             pass
 
@@ -270,8 +259,8 @@ class TestCat(unittest.TestCase):
         th = k3thread.daemon(_append)
 
         try:
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0.1):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=0.1))
 
             self.fail("expect NoSuchFile to raise")
         except k3cat.NoSuchFile:
@@ -299,8 +288,8 @@ class TestCat(unittest.TestCase):
         th = k3thread.daemon(_append)
 
         try:
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0.3):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=0.3))
 
             self.fail("expect NoData to raise")
         except k3cat.NoData:
@@ -327,8 +316,8 @@ class TestCat(unittest.TestCase):
         th = k3thread.daemon(_append)
 
         try:
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0.1):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=0.1))
 
             self.fail("expect NoData to raise")
         except k3cat.NoData:
@@ -405,8 +394,8 @@ class TestCat(unittest.TestCase):
         rst = []
         force_remove(self.fn)
         append_lines(self.fn, expected)
-        for line in k3cat.Cat(self.fn, strip=True, file_end_handler=_end).iterate(timeout=0):
-            rst.append(line)
+        cat = k3cat.Cat(self.fn, strip=True, file_end_handler=_end)
+        rst.extend(cat.iterate(timeout=0))
         self.assertEqual(expected + ["end"], rst)
 
         force_remove(c.stat_path())
@@ -423,8 +412,8 @@ class TestCat(unittest.TestCase):
         th = k3thread.daemon(_append)
 
         try:
-            for line in k3cat.Cat(self.fn, strip=True, file_end_handler=_end).iterate(timeout=0.2):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True, file_end_handler=_end)
+            rst.extend(cat.iterate(timeout=0.2))
         except k3cat.NoData:
             pass
 
@@ -442,9 +431,8 @@ class TestCat(unittest.TestCase):
         append_lines(self.fn, expected)
 
         # by default do not strip
-        rst = []
-        for line in k3cat.Cat(self.fn).iterate(timeout=0):
-            rst.append(line)
+        cat = k3cat.Cat(self.fn)
+        rst = list(cat.iterate(timeout=0))
 
         self.assertEqual([x + "\n" for x in expected], rst)
 
@@ -513,8 +501,8 @@ class TestCat(unittest.TestCase):
             rst = []
             try:
                 kwargs["timeout"] = 0.1
-                for line in k3cat.Cat(self.fn, strip=True).iterate(**kwargs):
-                    rst.append(line)
+                cat = k3cat.Cat(self.fn, strip=True)
+                rst.extend(cat.iterate(**kwargs))
             except k3cat.NoData:
                 pass
 
@@ -530,8 +518,8 @@ class TestCat(unittest.TestCase):
 
         rst = []
         try:
-            for line in k3cat.Cat(self.fn, strip=True).iterate(timeout=0.1):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=True)
+            rst.extend(cat.iterate(timeout=0.1))
         except k3cat.NoData:
             pass
 
@@ -541,8 +529,8 @@ class TestCat(unittest.TestCase):
 
         rst = []
         try:
-            for line in k3cat.Cat(self.fn, strip=False).iterate(timeout=0.1, default_seek=-100):
-                rst.append(line)
+            cat = k3cat.Cat(self.fn, strip=False)
+            rst.extend(cat.iterate(timeout=0.1, default_seek=-100))
         except k3cat.NoData:
             pass
 
@@ -556,8 +544,7 @@ class TestCat(unittest.TestCase):
 
         rst = []
         try:
-            for line in cat.iterate(timeout=0.1):
-                rst.append(line)
+            rst.extend(cat.iterate(timeout=0.1))
         except k3cat.NoData:
             pass
 
@@ -567,8 +554,7 @@ class TestCat(unittest.TestCase):
 
         rst = []
         try:
-            for line in cat.iterate(timeout=0.1):
-                rst.append(line)
+            rst.extend(cat.iterate(timeout=0.1))
         except k3cat.NoData:
             pass
 
@@ -578,8 +564,7 @@ class TestCat(unittest.TestCase):
 
         rst = []
         try:
-            for line in cat.iterate(timeout=0.1):
-                rst.append(line)
+            rst.extend(cat.iterate(timeout=0.1))
         except k3cat.NoData:
             pass
 
@@ -600,15 +585,13 @@ def force_remove(fn):
 
 def append_lines(fn, lines):
     with open(fn, "a") as f:
-        for line in lines:
-            f.write(line + "\n")
+        f.writelines(line + "\n" for line in lines)
         f.flush()
         os.fsync(f.fileno())
 
 
 def append_bytes(fn, *strings):
     with open(fn, "a") as f:
-        for s in strings:
-            f.write(s)
+        f.writelines(strings)
         f.flush()
         os.fsync(f.fileno())

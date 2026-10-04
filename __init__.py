@@ -17,14 +17,14 @@ from importlib.metadata import version
 
 __version__ = version("k3cat")
 
-from .cat import SEEK_END, SEEK_START, CatError, LockTimeout, NoData, NoSuchFile, Cat
+from .cat import SEEK_END, SEEK_START, Cat, CatError, LockTimeout, NoData, NoSuchFile
 
 __all__ = [
     "SEEK_END",
     "SEEK_START",
+    "Cat",
     "CatError",
     "LockTimeout",
     "NoData",
     "NoSuchFile",
-    "Cat",
 ]

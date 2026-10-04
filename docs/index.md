@@ -20,7 +20,7 @@ pip install k3cat
 import k3cat
 
 # Iterate over lines in a file
-for line in k3cat.Cat('/path/to/file', strip=True).iterate(timeout=0):
+for line in k3cat.Cat("/path/to/file", strip=True).iterate(timeout=0):
     print(line)
 ```
 
