@@ -156,6 +156,36 @@ class TestCat(unittest.TestCase):
         self.assertEqual(["中"], first)
         self.assertEqual(["后"], second)
 
+    def test_truncate_below_multibyte_offset(self):
+        # The offset after "中中中\n" is 10 bytes but 4 characters. The new
+        # content is 9 bytes, so only a byte offset sees that the file shrank.
+        cat = k3cat.Cat(self.fn, strip=True)
+
+        append_lines(self.fn, ["中中中"])
+        first = list(cat.iterate(timeout=0))
+
+        k3fs.fwrite(self.fn, "abcdefgh\n")
+        second = list(cat.iterate(timeout=0))
+
+        self.assertEqual(["中中中"], first)
+        self.assertEqual(["abcdefgh"], second)
+
+    def test_truncate_while_reading(self):
+        # Truncating keeps the inode, so only the size, now below the read
+        # offset, makes the running scan start again from the first byte.
+        append_lines(self.fn, ["a" * 32, "b" * 32])
+
+        it = k3cat.Cat(self.fn, strip=True).iterate(timeout=1)
+        rst = []
+        rst.append(next(it))
+        rst.append(next(it))
+
+        k3fs.fwrite(self.fn, "c" * 8 + "\n")
+        rst.append(next(it))
+        it.close()
+
+        self.assertEqual(["a" * 32, "b" * 32, "c" * 8], rst)
+
     def test_file_change(self):
         expected = [
             "a" * 32,
