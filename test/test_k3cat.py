@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 import time
 import unittest
 
@@ -194,19 +195,25 @@ class TestCat(unittest.TestCase):
             "d" * 32,
         ]
         rst = []
+        line_read = threading.Event()
 
         def _override():
             for item in expected:
+                line_read.clear()
                 force_remove(self.fn)
                 append_lines(self.fn, [item])
                 dd("overrided: ", item)
-                time.sleep(0.6)
+                # Replace the file only after Cat read this version: a fixed
+                # sleep loses a version when the reader is slow.
+                line_read.wait(timeout=10)
 
         th = k3thread.daemon(_override)
 
         try:
             cat = k3cat.Cat(self.fn, strip=True)
-            rst.extend(cat.iterate(timeout=2))
+            for line in cat.iterate(timeout=2):
+                rst.append(line)
+                line_read.set()
         except k3cat.NoData:
             pass
 
