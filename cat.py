@@ -372,7 +372,7 @@ class Cat:
             "offset": offset,
         }
 
-        k3fs.fwrite(self.stat_path(), k3utfjson.dump(last), fsync=False)
+        k3fs.fwrite(self.stat_path(), k3utfjson.dump(last), fsync=False, atomic=True)
 
         logger.info(f"position written fn={self.fn} inode={ino} offset={offset}")
 

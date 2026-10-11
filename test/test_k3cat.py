@@ -107,6 +107,22 @@ class TestCat(unittest.TestCase):
         rst.extend(cat_handle.iterate(timeout=0))
         self.assertEqual(expected * 3, rst)
 
+    def test_offset_record_kept_when_write_fails(self):
+        # A write that fails after it starts, as on a full disk, must keep the last record. An emptied record
+        # counts as damaged, so the next Cat would read the file from the start again.
+        append_lines(self.fn, ["a"])
+        first = list(k3cat.Cat(self.fn, strip=True).iterate(timeout=0))
+
+        append_lines(self.fn, ["b"])
+        # The record file is opened before f.write() refuses the bytes.
+        with mock.patch.object(k3cat.cat.k3utfjson, "dump", return_value=b"{}"), self.assertRaises(TypeError):
+            list(k3cat.Cat(self.fn, strip=True).iterate(timeout=0))
+
+        rest = list(k3cat.Cat(self.fn, strip=True).iterate(timeout=0))
+
+        self.assertEqual(["a"], first)
+        self.assertEqual(["b"], rest)
+
     def test_data_chucked(self):
         expected = ["a" * 32]
         new_data = ["b" * 32]
