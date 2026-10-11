@@ -212,7 +212,7 @@ class Cat:
         if timeout is None:
             timeout = no_data_timeout
 
-        expire_at = time.time() + timeout
+        expire_at = time.monotonic() + timeout
 
         while True:
             # NOTE: Opening a file and waiting for new data in it does not work.
@@ -224,21 +224,21 @@ class Cat:
             #
             # Thus we check if file changed for about 5 times(by reopening it).
 
-            read_timeout = (expire_at - time.time()) / 5.0
+            read_timeout = (expire_at - time.monotonic()) / 5.0
 
             read_timeout = max(read_timeout, file_check_time_range[0])
 
             read_timeout = min(read_timeout, file_check_time_range[1])
 
-            f = self.wait_open_file(timeout=expire_at - time.time())
+            f = self.wait_open_file(timeout=expire_at - time.monotonic())
 
             with f:
                 try:
                     yield from self.iter_to_file_end(f, read_timeout, default_seek)
 
                     # re-new expire_at if there is any data read.
-                    expire_at = time.time() + timeout
-                    if time.time() > expire_at:
+                    expire_at = time.monotonic() + timeout
+                    if time.monotonic() > expire_at:
                         # caller expect to return at once when it has read once,
                         # timeout < 0
 
@@ -260,12 +260,12 @@ class Cat:
 
                     logger.info(repr(e) + f" while cat: {self.fn}")
 
-                    if time.time() > expire_at:
+                    if time.monotonic() > expire_at:
                         # raise last NoData
                         raise
 
     def wait_open_file(self, timeout):
-        expire_at = time.time() + timeout
+        expire_at = time.monotonic() + timeout
         sleep_time = 0.01
         max_sleep_time = 1
 
@@ -275,12 +275,12 @@ class Cat:
 
         logger.info(f"file not found: {self.fn}")
 
-        while time.time() < expire_at:
+        while time.monotonic() < expire_at:
             f = self._try_open_file()
             if f is not None:
                 return f
 
-            sl = min([sleep_time, expire_at - time.time()])
+            sl = min([sleep_time, expire_at - time.monotonic()])
             logger.debug(f"file not found: {self.fn}, sleep for {sl}")
             time.sleep(sl)
 
@@ -314,17 +314,17 @@ class Cat:
         # insufficient chunk data return before read_timeout
         full_chunk_timeout = min([timeout * 0.5, 1])
 
-        full_chunk_expire_at = time.time() + full_chunk_timeout
-        expire_at = time.time() + timeout
+        full_chunk_expire_at = time.monotonic() + full_chunk_timeout
+        expire_at = time.monotonic() + timeout
 
         while True:
             if f.tell() + self.read_chunk_size < _file_size(f):
                 return
 
-            if f.tell() < _file_size(f) and time.time() > full_chunk_expire_at:
+            if f.tell() < _file_size(f) and time.monotonic() > full_chunk_expire_at:
                 return
 
-            if time.time() >= expire_at:
+            if time.monotonic() >= expire_at:
                 raise NoData()
 
             time.sleep(0.05)

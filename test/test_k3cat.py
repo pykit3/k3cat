@@ -1,8 +1,10 @@
+import itertools
 import os
 import sys
 import tempfile
 import threading
 import time
+import types
 import unittest
 from unittest import mock
 
@@ -361,6 +363,26 @@ class TestCat(unittest.TestCase):
         self.assertEqual([], rst)
 
         th.join()
+
+    def test_wait_ignores_wall_clock_steps(self):
+        # A wall clock step, such as an NTP correction, must not end a wait early. This wall clock moves an hour
+        # forward on every read.
+        hours = itertools.count(step=3600)
+        clock = types.SimpleNamespace(time=lambda: next(hours), monotonic=time.monotonic, sleep=time.sleep)
+
+        def _append():
+            time.sleep(0.1)
+            append_lines(self.fn, ["a"])
+
+        th = k3thread.daemon(_append)
+
+        rst = []
+        with mock.patch.object(k3cat.cat, "time", clock), self.assertRaises(k3cat.NoData):
+            rst.extend(k3cat.Cat(self.fn, strip=True).iterate(timeout=0.5))
+
+        th.join()
+
+        self.assertEqual(["a"], rst)
 
     @unittest.skipIf(os.geteuid() == 0, "root opens a file without read permission")
     def test_open_error_other_than_missing_file(self):
