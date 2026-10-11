@@ -1,8 +1,10 @@
 import os
 import sys
+import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 
 import k3fs
 import k3proc
@@ -24,13 +26,15 @@ class TestCat(unittest.TestCase):
 
     def setUp(self):
         force_remove(self.fn)
-        c = k3cat.Cat(self.fn)
-        force_remove(c.stat_path())
+        # Each test records offsets in a new directory, so an offset left by another run cannot change its result.
+        stat_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(stat_dir.cleanup)
+        patcher = mock.patch.object(k3cat.cat, "stat_dir", stat_dir.name)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def tearDown(self):
         force_remove(self.fn)
-        c = k3cat.Cat(self.fn)
-        force_remove(c.stat_path())
 
     def test_entire_file(self):
         expected = [
@@ -178,6 +182,19 @@ class TestCat(unittest.TestCase):
 
         self.assertEqual(["a"], first)
         self.assertEqual(["中", "b"], second)
+
+    def test_continue_read_after_consumer_stops(self):
+        # A line is recorded as read once it is returned, even if the consumer then stops the iteration.
+        append_lines(self.fn, ["a", "b", "c"])
+
+        it = k3cat.Cat(self.fn, strip=True).iterate(timeout=0)
+        first = next(it)
+        it.close()
+
+        rest = list(k3cat.Cat(self.fn, strip=True).iterate(timeout=0))
+
+        self.assertEqual("a", first)
+        self.assertEqual(["b", "c"], rest)
 
     def test_truncate_below_multibyte_offset(self):
         # The offset after "中中中\n" is 10 bytes but 4 characters. The new
