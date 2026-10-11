@@ -470,8 +470,8 @@ class Cat:
             logger.info(f"file found and opened {self.fn}")
             return f
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                pass
+            if e.errno != errno.ENOENT:
+                raise
 
         return None
 

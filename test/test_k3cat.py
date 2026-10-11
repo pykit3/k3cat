@@ -329,6 +329,15 @@ class TestCat(unittest.TestCase):
 
         th.join()
 
+    @unittest.skipIf(os.geteuid() == 0, "root opens a file without read permission")
+    def test_open_error_other_than_missing_file(self):
+        # Only a missing file is waited for. Waiting cannot fix other errors, and NoSuchFile would hide them.
+        append_lines(self.fn, ["a"])
+        os.chmod(self.fn, 0)
+
+        with self.assertRaises(PermissionError):
+            list(k3cat.Cat(self.fn, strip=True).iterate(timeout=0))
+
     def test_wait_for_data(self):
         expected = [
             "a" * 32,
