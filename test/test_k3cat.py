@@ -157,6 +157,28 @@ class TestCat(unittest.TestCase):
         self.assertEqual(["中"], first)
         self.assertEqual(["后"], second)
 
+    def test_continue_read_incomplete_line(self):
+        # The recorded offset must stay at the start of a line that has no "\n" yet, or the next Cat starts
+        # in the middle of "中". A line returned at the timeout is recorded, so it is not returned again.
+        zhong = "中".encode()
+        with open(self.fn, "wb") as f:
+            f.write(b"a\n" + zhong[:2])
+
+        first = []
+        with self.assertRaises(k3cat.NoData):
+            first.extend(k3cat.Cat(self.fn, strip=True).iterate(timeout=0.1))
+
+        with open(self.fn, "ab") as f:
+            f.write(zhong[2:] + b"\nb")
+
+        second = list(k3cat.Cat(self.fn, strip=True).iterate(timeout=0))
+
+        with self.assertRaises(k3cat.NoData):
+            list(k3cat.Cat(self.fn, strip=True).iterate(timeout=0))
+
+        self.assertEqual(["a"], first)
+        self.assertEqual(["中", "b"], second)
+
     def test_truncate_below_multibyte_offset(self):
         # The offset after "中中中\n" is 10 bytes but 4 characters. The new
         # content is 9 bytes, so only a byte offset sees that the file shrank.

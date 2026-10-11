@@ -247,8 +247,12 @@ class Cat:
                         # not a trailing '\n' presents
                         if self.bufferred is not None:
                             line = self.bufferred[1].decode("utf-8")
+                            end = self.bufferred[0] + len(self.bufferred[1])
                             self.bufferred = None
-                            yield line
+                            try:
+                                yield line
+                            finally:
+                                self.write_last_stat(f, end)
                         return
 
                 except NoData as e:
@@ -288,6 +292,9 @@ class Cat:
 
     def iter_to_file_end(self, f, read_timeout, default_seek):
         offset = self.get_last_offset(f, default_seek)
+        if self.bufferred is not None and self.bufferred[0] == offset:
+            # The incomplete line at the recorded offset is already read into self.bufferred.
+            offset += len(self.bufferred[1])
         f.seek(offset)
 
         logger.info(f"scan {self.fn} from offset: {offset}")
@@ -435,8 +442,8 @@ class Cat:
                         self.bufferred = None
 
                     if not _line.endswith((b"\r", b"\n")):
+                        # offset stays at the start of the line until the line is returned.
                         self.bufferred = (offset, _line)
-                        offset += len(_line)
                         continue
 
                     line = _line.decode("utf-8")
