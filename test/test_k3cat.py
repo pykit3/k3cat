@@ -244,6 +244,26 @@ class TestCat(unittest.TestCase):
 
         self.assertEqual(["a" * 32, "b" * 32, "c" * 8], rst)
 
+    def test_file_change_after_incomplete_line(self):
+        # The same Cat keeps the incomplete line "ab" after a scan. It belongs to the replaced file, so it must
+        # not be joined to the new file's first line.
+        k3fs.fwrite(self.fn, "x\nab")
+        cat = k3cat.Cat(self.fn, strip=True)
+
+        first = []
+        with self.assertRaises(k3cat.NoData):
+            first.extend(cat.iterate(timeout=0.1))
+        self.assertEqual(["x"], first)
+
+        # An atomic write renames a new file over the old one, so the new file has another inode.
+        k3fs.fwrite(self.fn, "cd\n", atomic=True)
+        second = list(cat.iterate(timeout=0))
+        self.assertEqual(["cd"], second)
+
+        # The recorded offset is the end of the new file, so "cd" is not read again.
+        with self.assertRaises(k3cat.NoData):
+            list(cat.iterate(timeout=0))
+
     def test_file_change(self):
         expected = [
             "a" * 32,

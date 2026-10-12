@@ -118,7 +118,7 @@ class Cat:
         self.read_chunk_size = read_chunk_size
 
         self.running = None
-        self.bufferred = None  # (offset, content)
+        self.bufferred = None  # (offset, content, inode)
 
         if self.handler is not None and callable(self.handler):
             self.handler = [self.handler]
@@ -292,6 +292,11 @@ class Cat:
 
     def iter_to_file_end(self, f, read_timeout, default_seek):
         offset = self.get_last_offset(f, default_seek)
+        ino = os.fstat(f.fileno())[stat.ST_INO]
+        if self.bufferred is not None and self.bufferred[2] != ino:
+            # The incomplete line is from a replaced file, where it is never completed. It must not be joined to
+            # the first line of the new file.
+            self.bufferred = None
         if self.bufferred is not None and self.bufferred[0] == offset:
             # The incomplete line at the recorded offset is already read into self.bufferred.
             offset += len(self.bufferred[1])
@@ -416,6 +421,8 @@ class Cat:
         return last["offset"]
 
     def iter_lines(self, f, read_timeout):
+        ino = os.fstat(f.fileno())[stat.ST_INO]
+
         # raise NoData for the first time
         self.wait_for_new_data(f, read_timeout)
 
@@ -443,7 +450,7 @@ class Cat:
 
                     if not _line.endswith((b"\r", b"\n")):
                         # offset stays at the start of the line until the line is returned.
-                        self.bufferred = (offset, _line)
+                        self.bufferred = (offset, _line, ino)
                         continue
 
                     line = _line.decode("utf-8")
