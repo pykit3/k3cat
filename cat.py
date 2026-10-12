@@ -297,7 +297,11 @@ class Cat:
             # The incomplete line is from a replaced file, where it is never completed. It must not be joined to
             # the first line of the new file.
             self.bufferred = None
-        if self.bufferred is not None and self.bufferred[0] == offset:
+        if self.bufferred is not None and self.bufferred[0] != offset:
+            # The scan resumes at another offset, such as 0 after a truncation or reset_stat(). The bytes read next
+            # do not follow the incomplete line, so it must not be joined to them.
+            self.bufferred = None
+        if self.bufferred is not None:
             # The incomplete line at the recorded offset is already read into self.bufferred.
             offset += len(self.bufferred[1])
         f.seek(offset)

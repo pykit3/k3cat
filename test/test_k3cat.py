@@ -264,6 +264,41 @@ class TestCat(unittest.TestCase):
         with self.assertRaises(k3cat.NoData):
             list(cat.iterate(timeout=0))
 
+    def test_truncate_after_incomplete_line(self):
+        # The same Cat keeps the incomplete line "ab" at offset 2. After a truncation the scan restarts at offset
+        # 0, so "ab" must not be joined to the first line read there.
+        k3fs.fwrite(self.fn, "x\nab")
+        cat = k3cat.Cat(self.fn, strip=True)
+
+        first = []
+        with self.assertRaises(k3cat.NoData):
+            first.extend(cat.iterate(timeout=0.1))
+        self.assertEqual(["x"], first)
+
+        # Writing in place keeps the inode.
+        k3fs.fwrite(self.fn, "c")
+        second = list(cat.iterate(timeout=0))
+        self.assertEqual(["c"], second)
+
+        with self.assertRaises(k3cat.NoData):
+            list(cat.iterate(timeout=0))
+
+    def test_reset_stat_after_incomplete_line(self):
+        # The same Cat keeps the incomplete line "ab" at offset 2. After reset_stat() the scan restarts at offset
+        # 0, so "ab" must not be joined to the first line read there.
+        k3fs.fwrite(self.fn, "x\nab")
+        cat = k3cat.Cat(self.fn, strip=True)
+
+        first = []
+        with self.assertRaises(k3cat.NoData):
+            first.extend(cat.iterate(timeout=0.1))
+        self.assertEqual(["x"], first)
+
+        cat.reset_stat()
+        append_lines(self.fn, ["c"])
+        second = list(cat.iterate(timeout=0))
+        self.assertEqual(["x", "abc"], second)
+
     def test_file_change(self):
         expected = [
             "a" * 32,
